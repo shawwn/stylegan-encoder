@@ -104,21 +104,16 @@ def get_path_from_template(path_template: str, path_type: PathType = PathType.AU
     if path_type == PathType.AUTO:
         if platform.system() == "Windows":
             path_type = PathType.WINDOWS
-        elif platform.system() == "Linux":
-            path_type = PathType.LINUX
         else:
-            raise RuntimeError("Unknown platform")
+            path_type = PathType.LINUX
 
     path_template = path_template.replace("<USERNAME>", get_user_name())
 
     # return correctly formatted path
     if path_type == PathType.WINDOWS:
         return str(pathlib.PureWindowsPath(path_template))
-    elif path_type == PathType.LINUX:
-        return str(pathlib.PurePosixPath(path_template))
     else:
-        raise RuntimeError("Unknown platform")
-
+        return str(pathlib.PurePosixPath(path_template))
 
 def get_template_from_path(path: str) -> str:
     """Convert a normal path back to its template representation."""
@@ -146,15 +141,12 @@ def get_user_name():
         return _user_name_override
     elif platform.system() == "Windows":
         return os.getlogin()
-    elif platform.system() == "Linux":
+    else:
         try:
             import pwd # pylint: disable=import-error
             return pwd.getpwuid(os.geteuid()).pw_name # pylint: disable=no-member
         except:
             return "unknown"
-    else:
-        raise RuntimeError("Unknown platform")
-
 
 def _create_run_dir_local(submit_config: SubmitConfig) -> str:
     """Create a new run dir with increasing ID number at the start."""
