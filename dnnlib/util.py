@@ -320,6 +320,7 @@ def copy_files_and_create_dirs(files: List[Tuple[str, str]]) -> None:
         if not os.path.exists(target_dir_name):
             os.makedirs(target_dir_name)
 
+        print('%s -> %s' % (file[0], file[1]))
         shutil.copyfile(file[0], file[1])
 
 
