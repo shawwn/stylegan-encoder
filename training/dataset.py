@@ -67,7 +67,8 @@ class TFRecordDataset:
         self._cur_lod           = -1
 
         # List tfrecords files and inspect their shapes.
-        assert os.path.isdir(self.tfrecord_dir)
+        if not os.path.isdir(self.tfrecord_dir):
+          raise RuntimeError("The training dir doesn't exist! ({0})".format(self.tfrecord_dir))
         tfr_files = sorted(glob.glob(os.path.join(self.tfrecord_dir, '*.tfrecords')))
         assert len(tfr_files) >= 1
         tfr_shapes = []
