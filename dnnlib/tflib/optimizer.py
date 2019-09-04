@@ -9,6 +9,7 @@
 
 import numpy as np
 import tensorflow as tf
+import tfex
 
 from collections import OrderedDict
 from typing import List, Union
@@ -87,7 +88,7 @@ class Optimizer:
         assert all(var.device == dev for var in trainable_vars)
 
         # Register device and compute gradients.
-        with tf.name_scope(self.id + "_grad"), tf.device(dev):
+        with tf.name_scope(self.id + "_grad"), tfex.device(dev):
             if dev not in self._dev_opt:
                 opt_name = self.scope.replace("/", "_") + "_opt%d" % len(self._dev_opt)
                 assert callable(self.optimizer_class)
@@ -114,7 +115,7 @@ class Optimizer:
             dev_grads = OrderedDict()  # device => [(grad, var), ...]
 
             for dev_idx, dev in enumerate(devices):
-                with tf.name_scope("ProcessGrads%d" % dev_idx), tf.device(dev):
+                with tf.name_scope("ProcessGrads%d" % dev_idx), tfex.device(dev):
                     sums = []
 
                     for gv in zip(*self._dev_grads[dev]):
@@ -127,7 +128,7 @@ class Optimizer:
 
             # Sum gradients across devices.
             if len(devices) > 1:
-                with tf.name_scope("SumAcrossGPUs"), tf.device(None):
+                with tf.name_scope("SumAcrossGPUs"), tfex.device(None):
                     for var_idx, grad_shape in enumerate(self._grad_shapes):
                         g = [dev_grads[dev][var_idx][0] for dev in devices]
 
@@ -139,7 +140,7 @@ class Optimizer:
 
             # Apply updates separately on each device.
             for dev_idx, (dev, grads) in enumerate(dev_grads.items()):
-                with tf.name_scope("ApplyGrads%d" % dev_idx), tf.device(dev):
+                with tf.name_scope("ApplyGrads%d" % dev_idx), tfex.device(dev):
                     # Scale gradients as needed.
                     if self.use_loss_scaling or total_grads > 1:
                         with tf.name_scope("Scale"):

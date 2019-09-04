@@ -27,6 +27,7 @@ import numpy as np
 import tensorflow as tf
 from tensorboard import summary as summary_lib
 from tensorboard.plugins.custom_scalar import layout_pb2
+import tfex
 
 from . import tfutil
 from .tfutil import TfExpression
@@ -92,14 +93,14 @@ def autosummary(name: str, value: TfExpressionEx, passthru: TfExpressionEx = Non
     name_id = name.replace("/", "_")
 
     if tfutil.is_tf_expression(value):
-        with tf.name_scope("summary_" + name_id), tf.device(value.device):
+        with tf.name_scope("summary_" + name_id), tfex.device(value.device):
             update_op = _create_var(name, value)
             with tf.control_dependencies([update_op]):
                 return tf.identity(value if passthru is None else passthru)
 
     else:  # python scalar or numpy array
         if name not in _immediate:
-            with tfutil.absolute_name_scope("Autosummary/" + name_id), tf.device(None), tf.control_dependencies(None):
+            with tfutil.absolute_name_scope("Autosummary/" + name_id), tfex.device(None), tf.control_dependencies(None):
                 update_value = tf.placeholder(_dtype)
                 update_op = _create_var(name, update_value)
                 _immediate[name] = update_op, update_value
@@ -123,7 +124,7 @@ def finalize_autosummaries() -> None:
     tfutil.init_uninitialized_vars([var for vars_list in _vars.values() for var in vars_list])
 
     # Create summary ops.
-    with tf.device(None), tf.control_dependencies(None):
+    with tfex.device(None), tf.control_dependencies(None):
         for name, vars_list in _vars.items():
             name_id = name.replace("/", "_")
             with tfutil.absolute_name_scope("Autosummary/" + name_id):
@@ -178,7 +179,7 @@ def save_summaries(file_writer, global_step=None):
         layout = finalize_autosummaries()
         if layout is not None:
             file_writer.add_summary(layout)
-        with tf.device(None), tf.control_dependencies(None):
+        with tfex.device(None), tf.control_dependencies(None):
             _merge_op = tf.summary.merge_all()
 
     file_writer.add_summary(_merge_op.eval(), global_step)

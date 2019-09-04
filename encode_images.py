@@ -10,6 +10,7 @@ import config
 from encoder.generator_model import Generator
 from encoder.perceptual_model import PerceptualModel, load_images
 from keras.models import load_model
+import ganlib
 
 def split_to_batches(l, n):
     for i in range(0, len(l), n):
@@ -87,8 +88,7 @@ def main():
 
     # Initialize generator and perceptual model
     tflib.init_tf()
-    with dnnlib.util.open_url(args.model_url, cache_dir=config.cache_dir) as f:
-        generator_network, discriminator_network, Gs_network = pickle.load(f)
+    generator_network, discriminator_network, Gs_network = ganlib.load_model(args.model_url, cache_dir=config.cache_dir)
 
     generator = Generator(Gs_network, args.batch_size, clipping_threshold=args.clipping_threshold, tiled_dlatent=args.tile_dlatents, model_res=args.model_res, randomize_noise=args.randomize_noise)
     if (args.dlatent_avg != ''):
@@ -96,8 +96,7 @@ def main():
 
     perc_model = None
     if (args.use_lpips_loss > 0.00000001):
-        with dnnlib.util.open_url('https://drive.google.com/uc?id=1N2-m9qszOeVC9Tq77WxsLnuWwOedQiD2', cache_dir=config.cache_dir) as f:
-            perc_model =  pickle.load(f)
+       perc_model = ganlib.load_perceptual('https://drive.google.com/uc?id=1N2-m9qszOeVC9Tq77WxsLnuWwOedQiD2', cache_dir=config.cache_dir)
     perceptual_model = PerceptualModel(args, perc_model=perc_model, batch_size=args.batch_size)
     perceptual_model.build_perceptual_model(generator)
 
