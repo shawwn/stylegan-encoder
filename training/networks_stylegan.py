@@ -17,6 +17,9 @@ import dnnlib.tflib as tflib
 # NOTE: Do not import any application-specific modules here!
 # Specify all network parameters as kwargs.
 
+def _i(x): return tf.transpose(x, [0,2,3,1])
+def _o(x): return tf.transpose(x, [0,3,1,2])
+
 #----------------------------------------------------------------------------
 # Primitive ops for manipulating 4D activation tensors.
 # The gradients of these are not necessary efficient or even meaningful.
@@ -45,8 +48,8 @@ def _blur2d(x, f=[1,2,1], normalize=True, flip=False, stride=1):
     orig_dtype = x.dtype
     x = tf.cast(x, tf.float32)  # tf.nn.depthwise_conv2d() doesn't support fp16
     f = tf.constant(f, dtype=x.dtype, name='filter')
-    strides = [1, 1, stride, stride]
-    x = tf.nn.depthwise_conv2d(x, f, strides=strides, padding='SAME', data_format='NCHW')
+    strides = [1, stride, stride, 1]
+    x = _o(tf.nn.depthwise_conv2d(_i(x), f, strides=strides, padding='SAME', data_format='NHWC'))
     x = tf.cast(x, orig_dtype)
     return x
 
@@ -88,8 +91,8 @@ def _downscale2d(x, factor=2, gain=1):
 
     # Large factor => downscale using tf.nn.avg_pool().
     # NOTE: Requires tf_config['graph_options.place_pruned_graph']=True to work.
-    ksize = [1, 1, factor, factor]
-    return tf.nn.avg_pool(x, ksize=ksize, strides=ksize, padding='VALID', data_format='NCHW')
+    ksize = [1, factor, factor, 1]
+    return _o(tf.nn.avg_pool(_i(x), ksize=ksize, strides=ksize, padding='VALID', data_format='NHWC'))
 
 #----------------------------------------------------------------------------
 # High-level ops for manipulating 4D activation tensors.
@@ -174,7 +177,7 @@ if hasattr(config, 'use_treeconnect') and config.use_treeconnect:
         # Convolution for a given input and kernel
         kernel = get_weight([k_h, k_w, c_i, c_o], suffix=suffix, **kwargs)
         kernel = tf.cast(kernel, inp.dtype)
-        return tf.nn.conv2d(inp, kernel, strides=[1,1,1,1], padding='SAME', data_format='NCHW')
+        return _o(tf.nn.conv2d(_i(inp), kernel, strides=[1,1,1,1], padding='SAME', data_format='NHWC'))
 
     def real_dense(x, fmaps, **kwargs):
         if len(x.shape) > 2:
@@ -237,7 +240,7 @@ def conv2d(x, fmaps, kernel, **kwargs):
     assert kernel >= 1 and kernel % 2 == 1
     w = get_weight([kernel, kernel, x.shape[1].value, fmaps], **kwargs)
     w = tf.cast(w, x.dtype)
-    return tf.nn.conv2d(x, w, strides=[1,1,1,1], padding='SAME', data_format='NCHW')
+    return _o(tf.nn.conv2d(_i(x), w, strides=[1,1,1,1], padding='SAME', data_format='NHWC'))
 
 #----------------------------------------------------------------------------
 # Fused convolution + scaling.
@@ -259,8 +262,8 @@ def upscale2d_conv2d(x, fmaps, kernel, fused_scale='auto', **kwargs):
     w = tf.pad(w, [[1,1], [1,1], [0,0], [0,0]], mode='CONSTANT')
     w = tf.add_n([w[1:, 1:], w[:-1, 1:], w[1:, :-1], w[:-1, :-1]])
     w = tf.cast(w, x.dtype)
-    os = [tf.shape(x)[0], fmaps, x.shape[2] * 2, x.shape[3] * 2]
-    return tf.nn.conv2d_transpose(x, w, os, strides=[1,1,2,2], padding='SAME', data_format='NCHW')
+    os = [tf.shape(x)[0], x.shape[2] * 2, x.shape[3] * 2, fmaps]
+    return _o(tf.nn.conv2d_transpose(_i(x), w, os, strides=[1,2,2,1], padding='SAME', data_format='NHWC'))
 
 def conv2d_downscale2d(x, fmaps, kernel, fused_scale='auto', **kwargs):
     assert kernel >= 1 and kernel % 2 == 1
@@ -277,7 +280,7 @@ def conv2d_downscale2d(x, fmaps, kernel, fused_scale='auto', **kwargs):
     w = tf.pad(w, [[1,1], [1,1], [0,0], [0,0]], mode='CONSTANT')
     w = tf.add_n([w[1:, 1:], w[:-1, 1:], w[1:, :-1], w[:-1, :-1]]) * 0.25
     w = tf.cast(w, x.dtype)
-    return tf.nn.conv2d(x, w, strides=[1,1,2,2], padding='SAME', data_format='NCHW')
+    return _o(tf.nn.conv2d(_i(x), w, strides=[1,2,2,1], padding='SAME', data_format='NHWC'))
 
 #----------------------------------------------------------------------------
 # Apply bias to the given activation tensor.
