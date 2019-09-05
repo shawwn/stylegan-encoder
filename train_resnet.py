@@ -12,6 +12,7 @@ import argparse
 import dnnlib
 import config
 import dnnlib.tflib as tflib
+import ganlib
 
 import tensorflow
 import keras
@@ -238,8 +239,7 @@ tflib.init_tf()
 
 model = get_resnet_model(args.model_path, model_res=args.model_res, depth=args.model_depth, size=args.model_size, activation=args.activation, optimizer=args.optimizer, loss=args.loss)
 
-with dnnlib.util.open_url(args.model_url, cache_dir=config.cache_dir) as f:
-    generator_network, discriminator_network, Gs_network = pickle.load(f)
+generator_network, discriminator_network, Gs_network = ganlib.load_model(args.model_url, cache_dir=config.cache_dir)
 
 def load_Gs():
     return Gs_network
