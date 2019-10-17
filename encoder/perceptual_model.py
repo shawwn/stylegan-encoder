@@ -126,22 +126,50 @@ class PerceptualModel:
             self.add_placeholder("ref_img_features")
             self.add_placeholder("features_weight")
 
-        self.loss = 0
-        # L1 loss on VGG16 features
-        if (self.vgg_loss is not None):
-            self.loss += self.vgg_loss * tf_custom_l1_loss(self.features_weight * self.ref_img_features, self.features_weight * generated_img_features)
-        # + logcosh loss on image pixels
-        if (self.pixel_loss is not None):
-            self.loss += self.pixel_loss * tf_custom_logcosh_loss(self.ref_weight * self.ref_img, self.ref_weight * generated_image)
-        # + MS-SIM loss on image pixels
-        if (self.mssim_loss is not None):
-            self.loss += self.mssim_loss * tf.math.reduce_mean(1-tf.image.ssim_multiscale(self.ref_weight * self.ref_img, self.ref_weight * generated_image, 1))
-        # + extra perceptual loss on image pixels
-        if self.perc_model is not None and self.lpips_loss is not None:
-            self.loss += self.lpips_loss * tf.math.reduce_mean(self.compare_images(self.ref_weight * self.ref_img, self.ref_weight * generated_image))
-        # + L1 penalty on dlatent weights
-        if self.l1_penalty is not None:
-            self.loss += self.l1_penalty * 512 * tf.math.reduce_mean(tf.math.abs(generator.dlatent_variable-generator.get_dlatent_avg()))
+        def run_loss():
+            loss = 0
+            # L1 loss on VGG16 features
+            if (self.vgg_loss is not None):
+                loss += self.vgg_loss * tf_custom_l1_loss(self.features_weight * self.ref_img_features, self.features_weight * generated_img_features)
+            # + logcosh loss on image pixels
+            if (self.pixel_loss is not None):
+                loss += self.pixel_loss * tf_custom_logcosh_loss(self.ref_weight * self.ref_img, self.ref_weight * generated_image)
+            # + MS-SIM loss on image pixels
+            if (self.mssim_loss is not None):
+                loss += self.mssim_loss * tf.math.reduce_mean(1-tf.image.ssim_multiscale(self.ref_weight * self.ref_img, self.ref_weight * generated_image, 1))
+            # + extra perceptual loss on image pixels
+            if self.perc_model is not None and self.lpips_loss is not None:
+                loss += self.lpips_loss * tf.math.reduce_mean(self.compare_images(self.ref_weight * self.ref_img, self.ref_weight * generated_image))
+            # + L1 penalty on dlatent weights
+            if self.l1_penalty is not None:
+                loss += self.l1_penalty * 512 * tf.math.reduce_mean(tf.math.abs(generator.dlatent_variable-generator.get_dlatent_avg()))
+            return loss
+
+        optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+
+        with tf.name_scope('loss-step-1'):
+           loss_op = run_loss()
+
+        with tf.name_scope('optimizer-step-1'):
+            grads_and_vars = optimizer.compute_gradients(loss_op)
+            applied_grads = optimizer.apply_gradients(grads_and_vars)
+
+        all_grads_and_vars = [grads_and_vars]
+        all_applied_grads = [applied_grads]
+        all_loss_ops = [loss_op]
+        times_to_apply = 10
+
+        for i in range(times_to_apply - 1):
+            with tf.control_dependencies([all_applied_grads[-1]]):
+                with tf.name_scope('loss-step-' + str(i + 2)):
+                    op = run_loss()
+                    all_loss_ops.append(op)
+            with tf.control_dependencies([all_loss_ops[-1]]):
+                with tf.name_scope('optimizer-step-' + str(i + 2)):
+                    all_grads_and_vars.append(optimizer.compute_gradients(all_loss_ops[-1]))
+                    all_applied_grads.append(optimizer.apply_gradients(all_grads_and_vars[-1]))
+
+        self.train_op = tf.group(all_applied_grads)
 
     def generate_face_mask(self, im):
         from imutils import face_utils
@@ -235,37 +263,13 @@ class PerceptualModel:
 
     def optimize(self, vars_to_optimize, iterations=200):
         vars_to_optimize = vars_to_optimize if isinstance(vars_to_optimize, list) else [vars_to_optimize]
-        optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
-        loss_op = self.loss
-        #with tf.name_scope('loss-step-1'):
-        #    xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y, logits=logits)
-        #    loss_op = tf.reduce_mean(xentropy)
-
-        with tf.name_scope('optimizer-step-1'):
-            grads_and_vars = optimizer.compute_gradients(loss_op)
-            applied_grads = optimizer.apply_gradients(grads_and_vars)
-
-        all_grads_and_vars = [grads_and_vars]
-        all_applied_grads = [applied_grads]
-        all_loss_ops = [loss_op]
-        times_to_apply = 10
-
-        for i in range(times_to_apply - 1):
-            with tf.control_dependencies([all_applied_grads[-1]]):
-                with tf.name_scope('loss-step-' + str(i + 2)):
-                    xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y, logits=logits)
-                    all_loss_ops.append(tf.reduce_mean(xentropy))
-            with tf.control_dependencies([all_loss_ops[-1]]):
-                with tf.name_scope('optimizer-step-' + str(i + 2)):
-                    all_grads_and_vars.append(optimizer.compute_gradients(all_loss_ops[-1]))
-                    all_applied_grads.append(optimizer.apply_gradients(all_grads_and_vars[-1]))
-
-        train_op = tf.group(all_applied_grads)
+        train_op = self.train_op
+        optimizer = self.optimizer
 
         #min_op = optimizer.minimize(self.loss, var_list=[vars_to_optimize])
         self.sess.run(tf.variables_initializer(optimizer.variables()))
         self.sess.run(self._reset_global_step)
-        fetch_ops = [train_op, self.loss, self.learning_rate]
+        fetch_ops = [train_op]
         for _ in range(iterations):
-            _, loss, lr = self.sess.run(fetch_ops)
-            yield {"loss":loss, "lr": lr}
+            _ = self.sess.run(fetch_ops)
+            yield {"loss":100, "lr": 0.02}
