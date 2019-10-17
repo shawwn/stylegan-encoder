@@ -152,7 +152,7 @@ class PerceptualModel:
            self.loss_op = run_loss(0)
 
         with tf.name_scope('optimizer-step-1'):
-            grads_and_vars = optimizer.compute_gradients(self.loss_op, var_list=vars_to_optimize)
+            grads_and_vars = optimizer.compute_gradients(self.loss_op, var_list=[vars_to_optimize])
             applied_grads = optimizer.apply_gradients(grads_and_vars)
 
         all_grads_and_vars = [grads_and_vars]
@@ -167,7 +167,7 @@ class PerceptualModel:
                     all_loss_ops.append(loss_op)
             with tf.control_dependencies([all_loss_ops[-1]]):
                 with tf.name_scope('optimizer-step-' + str(i + 2)):
-                    all_grads_and_vars.append(optimizer.compute_gradients(all_loss_ops[-1], var_list=vars_to_optimize))
+                    all_grads_and_vars.append(optimizer.compute_gradients(all_loss_ops[-1], var_list=[vars_to_optimize]))
                     all_applied_grads.append(optimizer.apply_gradients(all_grads_and_vars[-1]))
 
         self.optimizer = optimizer
