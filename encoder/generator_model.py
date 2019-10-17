@@ -67,6 +67,8 @@ class Generator:
         if self.generator_output is None:
             self.generator_output = get_tensor('G_synthesis/_Run/concat_1/concat:0')
         if self.generator_output is None:
+            for op in self.graph.get_operations():
+                print(op)
             raise Exception("Couldn't find G_synthesis_1/_Run/concat tensor output")
         self.generated_image = tflib.convert_images_to_uint8(self.generator_output, nchw_to_nhwc=True, uint8_cast=False)
         self.generated_image_uint8 = tf.saturate_cast(self.generated_image, tf.uint8)
