@@ -60,10 +60,14 @@ class Generator:
 
         self.generator_output = get_tensor('G_synthesis_1/_Run/concat:0')
         if self.generator_output is None:
+            self.generator_output = get_tensor('G_synthesis_1/_Run/concat/concat:0')
+        if self.generator_output is None:
             self.generator_output = get_tensor('G_synthesis_1/_Run/concat_1/concat:0')
         # If we loaded only Gs and didn't load G or D, then scope "G_synthesis_1" won't exist in the graph.
         if self.generator_output is None:
             self.generator_output = get_tensor('G_synthesis/_Run/concat:0')
+        if self.generator_output is None:
+            self.generator_output = get_tensor('G_synthesis/_Run/concat/concat:0')
         if self.generator_output is None:
             self.generator_output = get_tensor('G_synthesis/_Run/concat_1/concat:0')
         if self.generator_output is None:
