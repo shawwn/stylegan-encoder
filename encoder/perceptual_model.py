@@ -236,10 +236,36 @@ class PerceptualModel:
     def optimize(self, vars_to_optimize, iterations=200):
         vars_to_optimize = vars_to_optimize if isinstance(vars_to_optimize, list) else [vars_to_optimize]
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
-        min_op = optimizer.minimize(self.loss, var_list=[vars_to_optimize])
+        loss_op = self.loss
+        #with tf.name_scope('loss-step-1'):
+        #    xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y, logits=logits)
+        #    loss_op = tf.reduce_mean(xentropy)
+
+        with tf.name_scope('optimizer-step-1'):
+            grads_and_vars = optimizer.compute_gradients(loss_op)
+            applied_grads = optimizer.apply_gradients(grads_and_vars)
+
+        all_grads_and_vars = [grads_and_vars]
+        all_applied_grads = [applied_grads]
+        all_loss_ops = [loss_op]
+        times_to_apply = 10
+
+        for i in range(times_to_apply - 1):
+            with tf.control_dependencies([all_applied_grads[-1]]):
+                with tf.name_scope('loss-step-' + str(i + 2)):
+                    xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y, logits=logits)
+                    all_loss_ops.append(tf.reduce_mean(xentropy))
+            with tf.control_dependencies([all_loss_ops[-1]]):
+                with tf.name_scope('optimizer-step-' + str(i + 2)):
+                    all_grads_and_vars.append(optimizer.compute_gradients(all_loss_ops[-1]))
+                    all_applied_grads.append(optimizer.apply_gradients(all_grads_and_vars[-1]))
+
+        train_op = tf.group(all_applied_grads)
+
+        #min_op = optimizer.minimize(self.loss, var_list=[vars_to_optimize])
         self.sess.run(tf.variables_initializer(optimizer.variables()))
         self.sess.run(self._reset_global_step)
-        fetch_ops = [min_op, self.loss, self.learning_rate]
+        fetch_ops = [train_op, self.loss, self.learning_rate]
         for _ in range(iterations):
             _, loss, lr = self.sess.run(fetch_ops)
             yield {"loss":loss, "lr": lr}
