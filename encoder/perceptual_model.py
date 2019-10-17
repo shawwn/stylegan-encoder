@@ -169,6 +169,7 @@ class PerceptualModel:
                     all_grads_and_vars.append(optimizer.compute_gradients(all_loss_ops[-1]))
                     all_applied_grads.append(optimizer.apply_gradients(all_grads_and_vars[-1]))
 
+        self.optimizer = optimizer
         self.train_op = tf.group(all_applied_grads)
 
     def generate_face_mask(self, im):
