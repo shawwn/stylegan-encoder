@@ -273,7 +273,7 @@ class PerceptualModel:
         #min_op = optimizer.minimize(self.loss, var_list=[vars_to_optimize])
         self.sess.run(tf.variables_initializer(optimizer.variables()))
         self.sess.run(self._reset_global_step)
-        fetch_ops = [train_op, self.loss_op, self.learning_rate]
+        fetch_ops = [train_op, self.learning_rate]
         for _ in range(iterations):
-            _, loss, lr = self.sess.run(fetch_ops)
-            yield {"loss": loss, "lr": lr}
+            _, lr = self.sess.run(fetch_ops)
+            yield {"loss": 100.0, "lr": lr}
