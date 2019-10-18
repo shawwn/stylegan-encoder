@@ -129,7 +129,6 @@ class PerceptualModel:
                     self.add_placeholder("ref_img_features")
                     self.add_placeholder("features_weight")
 
-            generated_img_features = self.perceptual_model(preprocess_input(self.ref_weight * generated_image))
             # L1 loss on VGG16 features
             if (self.vgg_loss is not None):
                 loss += self.vgg_loss * tf_custom_l1_loss(self.features_weight * self.ref_img_features, self.features_weight * generated_img_features)
