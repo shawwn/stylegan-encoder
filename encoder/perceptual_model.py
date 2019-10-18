@@ -103,30 +103,33 @@ class PerceptualModel:
                 self.decay_steps, self.decay_rate, staircase=True)
         self.sess.run([self._reset_global_step])
 
-        generated_image_tensor = generator.generated_image
-        generated_image = tf.image.resize_nearest_neighbor(generated_image_tensor,
-                                                                  (self.img_size, self.img_size), align_corners=True)
-
-        self.ref_img = tf.get_variable('ref_img', shape=generated_image.shape,
-                                                dtype='float32', initializer=tf.initializers.zeros())
-        self.ref_weight = tf.get_variable('ref_weight', shape=generated_image.shape,
+        def run_loss(loss, init=False):
+            generated_image_tensor = generator.generated_image
+            generated_image = tf.image.resize_nearest_neighbor(generated_image_tensor,
+                                                               (self.img_size, self.img_size), align_corners=True)
+            if init:
+                self.ref_img = tf.get_variable('ref_img', shape=generated_image.shape,
                                                dtype='float32', initializer=tf.initializers.zeros())
-        self.add_placeholder("ref_img")
-        self.add_placeholder("ref_weight")
+                self.ref_weight = tf.get_variable('ref_weight', shape=generated_image.shape,
+                                                  dtype='float32', initializer=tf.initializers.zeros())
+                self.add_placeholder("ref_img")
+                self.add_placeholder("ref_weight")
 
-        if (self.vgg_loss is not None):
-            vgg16 = VGG16(include_top=False, input_shape=(self.img_size, self.img_size, 3))
-            self.perceptual_model = Model(vgg16.input, vgg16.layers[self.layer].output)
+            if (self.vgg_loss is not None):
+                if init:
+                    vgg16 = VGG16(include_top=False, input_shape=(self.img_size, self.img_size, 3))
+                    self.perceptual_model = Model(vgg16.input, vgg16.layers[self.layer].output)
+                generated_img_features = self.perceptual_model(preprocess_input(self.ref_weight * generated_image))
+                if init:
+                    self.ref_img_features = tf.get_variable('ref_img_features', shape=generated_img_features.shape,
+                                                            dtype='float32', initializer=tf.initializers.zeros())
+                    self.features_weight = tf.get_variable('features_weight', shape=generated_img_features.shape,
+                                                           dtype='float32', initializer=tf.initializers.zeros())
+                    self.sess.run([self.features_weight.initializer, self.features_weight.initializer])
+                    self.add_placeholder("ref_img_features")
+                    self.add_placeholder("features_weight")
+
             generated_img_features = self.perceptual_model(preprocess_input(self.ref_weight * generated_image))
-            self.ref_img_features = tf.get_variable('ref_img_features', shape=generated_img_features.shape,
-                                                dtype='float32', initializer=tf.initializers.zeros())
-            self.features_weight = tf.get_variable('features_weight', shape=generated_img_features.shape,
-                                               dtype='float32', initializer=tf.initializers.zeros())
-            self.sess.run([self.features_weight.initializer, self.features_weight.initializer])
-            self.add_placeholder("ref_img_features")
-            self.add_placeholder("features_weight")
-
-        def run_loss(loss):
             # L1 loss on VGG16 features
             if (self.vgg_loss is not None):
                 loss += self.vgg_loss * tf_custom_l1_loss(self.features_weight * self.ref_img_features, self.features_weight * generated_img_features)
@@ -149,7 +152,7 @@ class PerceptualModel:
         vars_to_optimize = vars_to_optimize if isinstance(vars_to_optimize, list) else [vars_to_optimize]
 
         with tf.name_scope('loss-step-1'):
-           self.loss_op = run_loss(0)
+           self.loss_op = run_loss(0, init=True)
 
         with tf.name_scope('optimizer-step-1'):
             grads_and_vars = optimizer.compute_gradients(self.loss_op, var_list=[vars_to_optimize])
