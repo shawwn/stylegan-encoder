@@ -52,8 +52,28 @@ class Generator:
         self.dlatent_variable = next(v for v in tf.global_variables() if 'learnable_dlatents' in v.name)
         self.set_dlatents(self.initial_dlatents)
 
-        op = [x for x in self.graph.get_operations() if x.name.endswith('/_Run/concat') and x.name.startswith('G_synthesis')][-1]
-        self.generator_output = self.graph.get_tensor_by_name(op.name + ':0')
+        def get_tensor(name):
+            try:
+                return self.graph.get_tensor_by_name(name)
+            except KeyError:
+                return None
+
+        self.generator_output = get_tensor('G_synthesis_1/_Run/concat:0')
+        if self.generator_output is None:
+            self.generator_output = get_tensor('G_synthesis_1/_Run/concat/concat:0')
+        if self.generator_output is None:
+            self.generator_output = get_tensor('G_synthesis_1/_Run/concat_1/concat:0')
+        # If we loaded only Gs and didn't load G or D, then scope "G_synthesis_1" won't exist in the graph.
+        if self.generator_output is None:
+            self.generator_output = get_tensor('G_synthesis/_Run/concat:0')
+        if self.generator_output is None:
+            self.generator_output = get_tensor('G_synthesis/_Run/concat/concat:0')
+        if self.generator_output is None:
+            self.generator_output = get_tensor('G_synthesis/_Run/concat_1/concat:0')
+        if self.generator_output is None:
+            for op in self.graph.get_operations():
+                print(op)
+            raise Exception("Couldn't find G_synthesis_1/_Run/concat tensor output")
         self.generated_image = tflib.convert_images_to_uint8(self.generator_output, nchw_to_nhwc=True, uint8_cast=False)
         self.generated_image_uint8 = tf.saturate_cast(self.generated_image, tf.uint8)
 
