@@ -71,6 +71,12 @@ class Generator:
         if self.generator_output is None:
             self.generator_output = get_tensor('G_synthesis/_Run/concat_1/concat:0')
         if self.generator_output is None:
+            self.generator_output = get_tensor('G_synthesis_3/_Run/concat:0')
+        if self.generator_output is None:
+            self.generator_output = get_tensor('G_synthesis_3/_Run/concat/concat:0')
+        if self.generator_output is None:
+            self.generator_output = get_tensor('G_synthesis_3/_Run/concat_1/concat:0')
+        if self.generator_output is None:
             for op in self.graph.get_operations():
                 print(op)
             raise Exception("Couldn't find G_synthesis_1/_Run/concat tensor output")
