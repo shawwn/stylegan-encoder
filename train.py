@@ -35,7 +35,8 @@ if 1:
     kimg          = None
 
     # Dataset.
-    desc += '-animefaces';     dataset = EasyDict(tfrecord_dir='animefaces'); train.mirror_augment = True; kimg = 1046
+    #desc += '-animefaces';     dataset = EasyDict(tfrecord_dir='animefaces'); train.mirror_augment = True; kimg = 1046
+    desc += '-portraits';     dataset = EasyDict(tfrecord_dir='portraits'); train.mirror_augment = True; kimg = 1046
     #desc += '-ffhq';     dataset = EasyDict(tfrecord_dir='ffhq');              train.mirror_augment = True
     # desc += '-cub';     dataset = EasyDict(tfrecord_dir='CUB');             train.mirror_augment = True
     # desc += 'celebahq-binary';     dataset = EasyDict(tfrecord_dir='celebahq-binary', resolution=256);      train.mirror_augment = True
