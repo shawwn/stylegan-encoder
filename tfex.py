@@ -38,7 +38,7 @@ def has_tpu():
   init()
   return _has_tpu
 
-def device(name=''):
+def device(name=None):
   if name is None:
     return tf.device(None)
   if 'gpu' in name:
