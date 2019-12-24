@@ -144,7 +144,6 @@ def create_session(config_dict: dict = None, force_as_default: bool = False) -> 
                 obj = getattr(obj, field)
             setattr(obj, fields[-1], value)
 
-      config = config_pb2.ConfigProto(operation_timeout_in_ms=timeout_in_ms)
       config_proto.allow_soft_placement = False
       if allow_growth:
           config_proto.gpu_options.allow_growth = True
