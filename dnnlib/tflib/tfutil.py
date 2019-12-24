@@ -124,12 +124,18 @@ def assert_tf_initialized():
     if tf.get_default_session() is None:
         raise RuntimeError("No default TensorFlow session found. Please call dnnlib.tflib.init_tf().")
 
+from tensorflow.core.protobuf import config_pb2
+from tensorflow.core.protobuf import rewriter_config_pb2
+timeout_in_ms = 600000
+allow_growth = True
+allow_soft_placement = True
+disable_layout_optimizer = False
 
 def create_session(config_dict: dict = None, force_as_default: bool = False) -> tf.Session:
     """Create tf.Session based on config dict."""
     # Setup TensorFlow config proto.
     cfg = _sanitize_tf_config(config_dict)
-    config_proto = tf.ConfigProto()
+    config_proto = tf.ConfigProto(operation_timeout_in_ms=timeout_in_ms)
     for key, value in cfg.items():
         fields = key.split(".")
         if fields[0] not in ["rnd", "env"]:
@@ -137,6 +143,15 @@ def create_session(config_dict: dict = None, force_as_default: bool = False) -> 
             for field in fields[:-1]:
                 obj = getattr(obj, field)
             setattr(obj, fields[-1], value)
+
+      config = config_pb2.ConfigProto(operation_timeout_in_ms=timeout_in_ms)
+      config_proto.allow_soft_placement = False
+      if allow_growth:
+          config_proto.gpu_options.allow_growth = True
+      if allow_soft_placement:
+          config_proto.allow_soft_placement = True
+      if disable_layout_optimizer:
+          config_proto.graph_options.rewrite_options.layout_optimizer = rewriter_config_pb2.RewriterConfig.OFF
 
     import os
     tpu_address = None
