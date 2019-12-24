@@ -139,10 +139,12 @@ def create_session(config_dict: dict = None, force_as_default: bool = False) -> 
             setattr(obj, fields[-1], value)
 
     import os
-    tpu_address = ''
+    tpu_address = None
     if 'COLAB_TPU_ADDR' in os.environ:
       tpu_address = 'grpc://' + os.environ['COLAB_TPU_ADDR']
-      print('using TPU at %s' % tpu_address)
+    if 'TPU_NAME' in os.environ:
+      tpu_address = os.environ['TPU_NAME']
+    print('using TPU at %s' % tpu_address)
 
     # Create session.
     session = tf.Session(target=tpu_address, config=config_proto)
