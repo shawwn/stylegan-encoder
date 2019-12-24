@@ -11,6 +11,9 @@ import tensorflow as tf
 import dnnlib.tflib as tflib
 from dnnlib.tflib.autosummary import autosummary
 
+import os
+colocate_gradients = 'COLOCATE_GRADIENTS' in os.environ
+
 #----------------------------------------------------------------------------
 # Convenience func that casts all of its arguments to tf.float32.
 
@@ -66,7 +69,7 @@ def D_wgan_gp(G, D, opt, training_set, minibatch_size, reals, labels, # pylint: 
         mixed_scores_out = fp32(D.get_output_for(mixed_images_out, labels, is_training=True))
         mixed_scores_out = autosummary('Loss/scores/mixed', mixed_scores_out)
         mixed_loss = opt.apply_loss_scaling(tf.reduce_sum(mixed_scores_out))
-        mixed_grads = opt.undo_loss_scaling(fp32(tf.gradients(mixed_loss, [mixed_images_out], colocate_gradients_with_ops=True)[0]))
+        mixed_grads = opt.undo_loss_scaling(fp32(tf.gradients(mixed_loss, [mixed_images_out], colocate_gradients_with_ops=colocate_gradients)[0]))
         mixed_norms = tf.sqrt(tf.reduce_sum(tf.square(mixed_grads), axis=[1,2,3]))
         mixed_norms = autosummary('Loss/mixed_norms', mixed_norms)
         gradient_penalty = tf.square(mixed_norms - wgan_target)
@@ -108,7 +111,7 @@ def D_hinge_gp(G, D, opt, training_set, minibatch_size, reals, labels, # pylint:
         mixed_scores_out = fp32(D.get_output_for(mixed_images_out, labels, is_training=True))
         mixed_scores_out = autosummary('Loss/scores/mixed', mixed_scores_out)
         mixed_loss = opt.apply_loss_scaling(tf.reduce_sum(mixed_scores_out))
-        mixed_grads = opt.undo_loss_scaling(fp32(tf.gradients(mixed_loss, [mixed_images_out], colocate_gradients_with_ops=True)[0]))
+        mixed_grads = opt.undo_loss_scaling(fp32(tf.gradients(mixed_loss, [mixed_images_out], colocate_gradients_with_ops=colocate_gradients)[0]))
         mixed_norms = tf.sqrt(tf.reduce_sum(tf.square(mixed_grads), axis=[1,2,3]))
         mixed_norms = autosummary('Loss/mixed_norms', mixed_norms)
         gradient_penalty = tf.square(mixed_norms - wgan_target)
@@ -160,7 +163,7 @@ def D_logistic_simplegp(G, D, opt, training_set, minibatch_size, reals, labels, 
     if r1_gamma != 0.0:
         with tf.name_scope('R1Penalty'):
             real_loss = opt.apply_loss_scaling(tf.reduce_sum(real_scores_out))
-            real_grads = opt.undo_loss_scaling(fp32(tf.gradients(real_loss, [reals], colocate_gradients_with_ops=True)[0]))
+            real_grads = opt.undo_loss_scaling(fp32(tf.gradients(real_loss, [reals], colocate_gradients_with_ops=colocate_gradients)[0]))
             r1_penalty = tf.reduce_sum(tf.square(real_grads), axis=[1,2,3])
             r1_penalty = autosummary('Loss/r1_penalty', r1_penalty)
         loss += r1_penalty * (r1_gamma * 0.5)
@@ -168,7 +171,7 @@ def D_logistic_simplegp(G, D, opt, training_set, minibatch_size, reals, labels, 
     if r2_gamma != 0.0:
         with tf.name_scope('R2Penalty'):
             fake_loss = opt.apply_loss_scaling(tf.reduce_sum(fake_scores_out))
-            fake_grads = opt.undo_loss_scaling(fp32(tf.gradients(fake_loss, [fake_images_out], colocate_gradients_with_ops=True)[0]))
+            fake_grads = opt.undo_loss_scaling(fp32(tf.gradients(fake_loss, [fake_images_out], colocate_gradients_with_ops=colocate_gradients)[0]))
             r2_penalty = tf.reduce_sum(tf.square(fake_grads), axis=[1,2,3])
             r2_penalty = autosummary('Loss/r2_penalty', r2_penalty)
         loss += r2_penalty * (r2_gamma * 0.5)
