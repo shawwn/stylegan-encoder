@@ -129,7 +129,8 @@ from tensorflow.core.protobuf import rewriter_config_pb2
 timeout_in_ms = 600000
 allow_growth = True
 allow_soft_placement = True
-disable_layout_optimizer = False
+disable_layout_optimizer = True
+log_device_placement = True
 
 def create_session(config_dict: dict = None, force_as_default: bool = False) -> tf.Session:
     """Create tf.Session based on config dict."""
@@ -151,6 +152,8 @@ def create_session(config_dict: dict = None, force_as_default: bool = False) -> 
         config_proto.allow_soft_placement = True
     if disable_layout_optimizer:
         config_proto.graph_options.rewrite_options.layout_optimizer = rewriter_config_pb2.RewriterConfig.OFF
+    if log_device_placement:
+        config_proto.log_device_placement=True
 
     import os
     tpu_address = None
