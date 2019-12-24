@@ -144,13 +144,13 @@ def create_session(config_dict: dict = None, force_as_default: bool = False) -> 
                 obj = getattr(obj, field)
             setattr(obj, fields[-1], value)
 
-      config_proto.allow_soft_placement = False
-      if allow_growth:
-          config_proto.gpu_options.allow_growth = True
-      if allow_soft_placement:
-          config_proto.allow_soft_placement = True
-      if disable_layout_optimizer:
-          config_proto.graph_options.rewrite_options.layout_optimizer = rewriter_config_pb2.RewriterConfig.OFF
+    config_proto.allow_soft_placement = False
+    if allow_growth:
+        config_proto.gpu_options.allow_growth = True
+    if allow_soft_placement:
+        config_proto.allow_soft_placement = True
+    if disable_layout_optimizer:
+        config_proto.graph_options.rewrite_options.layout_optimizer = rewriter_config_pb2.RewriterConfig.OFF
 
     import os
     tpu_address = None
