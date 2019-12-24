@@ -26,6 +26,10 @@ def init():
       _cores = [x.name for x in _devices if ':GPU' in x.name]
   return _has_gpu
 
+def get_cores():
+  init()
+  return _cores
+
 def has_gpu():
   init()
   return _has_gpu

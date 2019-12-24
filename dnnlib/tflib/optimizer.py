@@ -27,6 +27,42 @@ except:
     # Older TensorFlow versions
     import tensorflow.contrib.nccl as nccl_ops
 
+def all_sum_plain(g, colocate=False, *args, **kws):
+  r = []
+  for i in range(len(g)):
+    if colocate:
+      with tf_ops.colocate_with(g[i]):
+        r.append(tf.add_n(g))
+    else:
+      r.append(tf.add_n(g))
+  return r
+
+def all_sum_gpu(g, *args, **kws):
+  return nccl_ops.all_sum(g, *args, **kws)
+
+from tensorflow.python.tpu.ops import tpu_ops
+
+#def all_sum_tpu(g, *args, **kws):
+#  g = tpu_ops.cross_replica_sum(g, *args, **kws)
+#  return [g[i] for i in range(shape_list(g)[0])]
+
+def all_sum_tpu(g, colocate=False, *args, **kws):
+  #import pdb
+  #pdb.set_trace()
+  #r = tf.reduce_sum(g)
+  #r = tf.reduce_sum(tf.stack(g), axis=0, keepdims=True)
+  #r = tpu_ops.cross_replica_sum(g, *args, **kws)
+  #r = [r[i] for i in range(shape_list(r)[0])]
+  return all_sum_plain(g, colocate=colocate, *args, **kws)
+
+def all_sum(cores, g, colocate=False, *args, **kws):
+  if any(['TPU' in x for x in cores]):
+    return all_sum_tpu(g, colocate=colocate, *args, **kws)
+  elif any(['GPU' in x for x in cores]):
+    return all_sum_gpu(g, *args, **kws)
+  else:
+    return all_sum_cpu(g, *args, **kws)
+
 class Optimizer:
     """A Wrapper for tf.train.Optimizer.
 
@@ -133,7 +169,7 @@ class Optimizer:
                         g = [dev_grads[dev][var_idx][0] for dev in devices]
 
                         if np.prod(grad_shape):  # nccl does not support zero-sized tensors
-                            g = nccl_ops.all_sum(g)
+                            g = all_sum(tfex.get_cores(), g)
 
                         for dev, gg in zip(devices, g):
                             dev_grads[dev][var_idx] = (gg, dev_grads[dev][var_idx][1])
