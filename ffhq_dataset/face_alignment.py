@@ -2,7 +2,19 @@ import numpy as np
 import scipy.ndimage
 import os
 import PIL.Image
+import PIL.ImageDraw
 
+def face_mask(face_landmarks, size, **keys):
+  mask = PIL.Image.new('L', size, color = 255, **keys)
+  draw=PIL.ImageDraw.Draw(mask)
+  #x0, y0 = 100, 10
+  #x1, y1 = 300, 190
+  x0, y0 = 0.1*size, 0.1*size
+  x1, y1 = 0.9*size, 0.9*size
+  transparent_area = (x0, y0, x1, y1)
+  draw.rectangle(transparent_area, fill = 0)
+  im.putalpha(mask)
+  return im
 
 def image_align(src_file, dst_file, face_landmarks, output_size=1024, transform_size=4096, enable_padding=True, x_scale=1, y_scale=1, em_scale=0.1, alpha=False):
         # Align function from FFHQ dataset pre-processing step
