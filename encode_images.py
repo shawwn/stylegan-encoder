@@ -135,7 +135,7 @@ def main():
                 dlatents = ff_model.predict(preprocess_input(load_images(images_batch,image_size=args.resnet_image_size)))
         if dlatents is not None:
             generator.set_dlatents(dlatents)
-        op = perceptual_model.optimize(generator.dlatent_variable, iterations=args.iterations)
+        op = perceptual_model.optimize(iterations=args.iterations)
         pbar = tqdm(op, leave=False, total=args.iterations)
         vid_count = 0
         best_loss = None
