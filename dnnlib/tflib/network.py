@@ -50,6 +50,8 @@ class Network:
     Args:
         name: Network name. Used to select TensorFlow name and variable scopes.
         func_name: Fully qualified name of the underlying network construction function, or a top-level function object.
+        reuse: Whether to reuse existing scope names, or create a new one.
+        index: if reuse is True, then we postfix the name with "_{index}" and use that as our scope.
         static_kwargs: Keyword arguments to be passed in to the network construction function.
 
     Attributes:
@@ -73,7 +75,7 @@ class Network:
         var_global_to_local: Mapping from variable global names to local names.
     """
 
-    def __init__(self, name: str = None, func_name: Any = None, **static_kwargs):
+    def __init__(self, name: str = None, func_name: Any = None, *, reuse = None, index = 1, **static_kwargs):
         tfutil.assert_tf_initialized()
         assert isinstance(name, str) or name is None
         assert func_name is not None
@@ -82,6 +84,8 @@ class Network:
 
         self._init_fields()
         self.name = name
+        self.reuse = reuse
+        self.index = index
         self.static_kwargs = util.EasyDict(static_kwargs)
 
         # Locate the user-specified network build function.
@@ -103,6 +107,8 @@ class Network:
     def _init_fields(self) -> None:
         self.name = None
         self.scope = None
+        self.reuse = False
+        self.index = None
         self.static_kwargs = util.EasyDict()
         self.components = util.EasyDict()
         self.num_inputs = 0
@@ -141,7 +147,13 @@ class Network:
             self.name = self._build_func_name
         assert re.match("^[A-Za-z0-9_.\\-]*$", self.name)
         with tf.name_scope(None):
-            self.scope = tf.get_default_graph().unique_name(self.name, mark_as_used=True)
+            if self.reuse:
+                if self.index is not None:
+                    self.scope = '{name}_{index}'.format(name=self.name, index=self.index)
+                else:
+                    self.scope = '{name}'
+            else:
+                self.scope = tf.get_default_graph().unique_name(self.name, mark_as_used=True)
 
         # Finalize build func kwargs.
         build_kwargs = dict(self.static_kwargs)
