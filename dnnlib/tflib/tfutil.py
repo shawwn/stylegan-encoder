@@ -145,12 +145,13 @@ def create_session(config_dict: dict = None, force_as_default: bool = False) -> 
       print('using TPU at %s' % tpu_address)
 
     # Create session.
-    session = tf.Session(target=tpu_address, config=config_proto)
-    if force_as_default:
-        # pylint: disable=protected-access
-        session._default_session = session.as_default()
-        session._default_session.enforce_nesting = False
-        session._default_session.__enter__() # pylint: disable=no-member
+    Session = (tf.Session if not force_as_default else tf.InteractiveSession)
+    session = Session(target=tpu_address, config=config_proto)
+    # if force_as_default:
+    #     # pylint: disable=protected-access
+    #     session._default_session = session.as_default()
+    #     session._default_session.enforce_nesting = False
+    #     session._default_session.__enter__() # pylint: disable=no-member
 
     return session
 
