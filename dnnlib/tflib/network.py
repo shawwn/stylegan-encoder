@@ -23,6 +23,8 @@ from .. import util
 
 from .tfutil import TfExpression, TfExpressionEx
 
+from metrics import device
+
 _import_handlers = []  # Custom import handlers for dealing with legacy data in pickle import.
 _import_module_src = dict()  # Source code for temporary modules created during pickle import.
 
@@ -430,7 +432,7 @@ class Network:
         if key not in self._run_cache:
             with tfutil.absolute_name_scope(self.scope + "/_Run"), tf.control_dependencies(None):
                 if custom_inputs is not None:
-                    with tf.device("/gpu:0"):
+                    with device.get_device(0):
                         in_expr = [input_builder(name) for input_builder, name in zip(custom_inputs, self.input_names)]
                         in_split = list(zip(*[tf.split(x, num_gpus) for x in in_expr]))
                 else:
@@ -440,7 +442,7 @@ class Network:
 
                 out_split = []
                 for gpu in range(num_gpus):
-                    with tf.device("/gpu:%d" % gpu):
+                    with device.get_device(gpu):
                         net_gpu = self.clone() if assume_frozen else self
                         in_gpu = in_split[gpu]
 
@@ -617,6 +619,8 @@ def _legacy_output_transform_func(*expr, out_mul=1.0, out_add=0.0, out_shrink=1,
 
     if out_shrink > 1:
         ksize = [1, 1, out_shrink, out_shrink]
+        import pdb
+        pdb.set_trace()
         expr = [tf.nn.avg_pool(x, ksize=ksize, strides=ksize, padding="VALID", data_format="NCHW") for x in expr]
 
     if out_dtype is not None:

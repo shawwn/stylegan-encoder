@@ -13,7 +13,7 @@ import sklearn.svm
 import tensorflow as tf
 import dnnlib.tflib as tflib
 
-from metrics import metric_base
+from metrics import metric_base, device
 from training import misc
 
 #----------------------------------------------------------------------------
@@ -116,7 +116,7 @@ class LS(metric_base.MetricBase):
         # Construct TensorFlow graph for each GPU.
         result_expr = []
         for gpu_idx in range(num_gpus):
-            with tf.device('/gpu:%d' % gpu_idx):
+            with device.get_device(gpu_idx):
                 Gs_clone = Gs.clone()
 
                 # Generate images.

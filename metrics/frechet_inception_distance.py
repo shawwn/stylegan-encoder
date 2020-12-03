@@ -13,7 +13,7 @@ import scipy
 import tensorflow as tf
 import dnnlib.tflib as tflib
 
-from metrics import metric_base
+from metrics import metric_base, device
 from training import misc
 
 #----------------------------------------------------------------------------
@@ -48,7 +48,7 @@ class FID(metric_base.MetricBase):
         # Construct TensorFlow graph.
         result_expr = []
         for gpu_idx in range(num_gpus):
-            with tf.device('/gpu:%d' % gpu_idx):
+            with device.get_device(gpu_idx):
                 Gs_clone = Gs.clone()
                 inception_clone = inception.clone()
                 latents = tf.random_normal([self.minibatch_per_gpu] + Gs_clone.input_shape[1:])
