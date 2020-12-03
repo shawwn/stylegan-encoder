@@ -52,7 +52,7 @@ class Generator:
         self.dlatent_variable = next(v for v in tf.global_variables() if 'learnable_dlatents' in v.name)
         self.set_dlatents(self.initial_dlatents)
 
-        op = [x for x in self.graph.get_operations() if x.name.endswith('/_Run/concat') and x.name.startswith('G_synthesis')][-1]
+        op = [x for x in self.graph.get_operations() if (x.name.endswith('/_Run/concat') or x.name.endswith('/_Run/concat/concat')) and x.name.startswith('G_synthesis')][-1]
         self.generator_output = self.graph.get_tensor_by_name(op.name + ':0')
         self.generated_image = tflib.convert_images_to_uint8(self.generator_output, nchw_to_nhwc=True, uint8_cast=False)
         self.generated_image_uint8 = tf.saturate_cast(self.generated_image, tf.uint8)
